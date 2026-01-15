@@ -1,6 +1,7 @@
 package main
 
 import (
+	"boot.theprimeagen.tv/internal/response"
 	"boot.theprimeagen.tv/internal/server"
 	"log"
 	"os"
@@ -14,6 +15,17 @@ import (
 const port = 42069
 
 func main() {
+	err := response.WriteStatusLine(os.Stdout, response.StatusCode_200)
+	if err != nil {
+		log.Print(err)
+	}
+
+	headers := response.GetDefaultHeaders(3)
+	err = response.WriteHeaders(os.Stdout, headers)
+	if err != nil {
+		log.Print(err)
+	}
+
 	server, err := server.Serve(port)
 	if err != nil {
 		log.Fatalf("Error starting server: %v", err)

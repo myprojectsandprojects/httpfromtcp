@@ -1,6 +1,7 @@
 package server
 
 import (
+	"boot.theprimeagen.tv/internal/response"
 	"fmt"
 	"log"
 	"net"
@@ -29,27 +30,42 @@ func (s *Server) listen() {
 			break
 		}
 
-		c, err := (*s.listener).Accept()
+		conn, err := (*s.listener).Accept()
 		if err != nil {
-			log.Fatalln("fail")
+			log.Fatal(err) //@ How to report this error?
 		}
 
-		go s.handle(c)
+		go s.handle(conn)
 	}
 }
 
-func (s *Server) handle(c net.Conn) {
-	body := "Hello world!"
-	response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %v\r\n\r\n%v", len(body), body)
-	// response := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 21\r\n\r\n<h1>Hello World!</h1>")
-	// response := []byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 21\r\n\r\n<h1>Hello World!</h1>")
-	n, err := c.Write([]byte(response))
-	if err != nil {
-		log.Fatalln("fail")
-	}
-	log.Printf("Wrote a response (%v bytes)", n)
+func (s *Server) handle(conn net.Conn) {
+	body := "Oh yeah, baby!"
+	contentLen := len(body)
 
-	c.Close()
+	err := response.WriteStatusLine(conn, response.StatusCode_500)
+	// err := response.WriteStatusLine(conn, response.StatusCode_200)
+	if err != nil {
+		log.Fatal(err) //@ How to report this error?
+	}
+
+	headers := response.GetDefaultHeaders(contentLen)
+	err = response.WriteHeaders(conn, headers)
+	if err != nil {
+		log.Fatal(err) //@ How to report this error?
+	}
+
+	_, err = conn.Write([]byte("\r\n"))
+	if err != nil {
+		log.Fatal(err) //@ How to report this error?
+	}
+
+	_, err = conn.Write([]byte(body))
+	if err != nil {
+		log.Fatal(err) //@ How to report this error?
+	}
+
+	conn.Close()
 }
 
 func (s *Server) Close() error {
