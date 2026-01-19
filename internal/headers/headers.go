@@ -53,12 +53,11 @@ func (h *Headers) Parse(data []byte) (int, bool, error) {
 		}
 	}
 
-	headers := *h
 	fieldName = bytes.ToLower(fieldName)
-	if headers[string(fieldName)] == "" {
-		headers[string(fieldName)] = string(fieldValue)
+	if (*h)[string(fieldName)] == "" {
+		(*h)[string(fieldName)] = string(fieldValue)
 	} else {
-		headers[string(fieldName)] += ", " + string(fieldValue)
+		(*h)[string(fieldName)] += ", " + string(fieldValue)
 	}
 
 	return len(fieldLine) + 2, false, nil

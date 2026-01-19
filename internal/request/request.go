@@ -3,7 +3,6 @@ package request
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"strconv"
@@ -50,24 +49,21 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		n, err := reader.Read(buf[ri:])
 		if err != nil {
-			if err == io.EOF {
-				// Read returned EOF, which means that no more data is coming, but parser is expecting more...
-				return nil, fmt.Errorf("Incomplete data")
-			}
-			return nil, fmt.Errorf("Read: %v", err.Error())
+			return nil, err
 		}
 		ri += n
 
-		for req.status != reqStatusDone {
-			n, err = req.parse(buf[pi:ri])
-			if n == 0 {
-				if err != nil {
-					return nil, err
-				} else {
-					break
+		for {
+			bytesParsed, parseErr := req.parse(buf[pi:ri])
+			if bytesParsed == 0 {
+				if parseErr != nil {
+					return nil, parseErr
 				}
+
+				break
 			}
-			pi += n
+
+			pi += bytesParsed
 		}
 	}
 
@@ -116,6 +112,9 @@ func (r *Request) parse(d []byte) (int, error) {
 
 			r.status = reqStatusDone
 		}
+	case reqStatusDone:
+		n = 0
+		err = nil
 	default:
 		log.Panic("Unknown request status")
 	}

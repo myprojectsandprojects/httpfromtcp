@@ -32,7 +32,7 @@ func (code StatusCode) String() string {
 
 func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 	statusLine := fmt.Sprintf("HTTP/1.1 %v %v\r\n", int(statusCode), statusCode)
-	_, err := w.Write([]byte(statusLine))
+	_, err := w.Write([]byte(statusLine)) //@ Does it write everything?
 	return err
 }
 
@@ -47,7 +47,7 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 func WriteHeaders(w io.Writer, headers headers.Headers) error {
 	for k, v := range headers {
 		header := fmt.Sprintf("%v: %v\r\n", k, v)
-		_, err := w.Write([]byte(header))
+		_, err := w.Write([]byte(header)) //@ Does it write everything?
 		if err != nil {
 			return err
 		}
