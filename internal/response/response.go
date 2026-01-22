@@ -57,7 +57,8 @@ type Response struct {
 
 func New() *Response {
 	return &Response{
-		Headers: headers.Create(),
+		Headers:    headers.Create(),
+		StatusCode: StatusCode_200,
 	}
 }
 

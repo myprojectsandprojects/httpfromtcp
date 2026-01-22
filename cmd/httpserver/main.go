@@ -20,7 +20,7 @@ func main() {
 		log.Fatalf("Error starting server: %v", err)
 	}
 	defer server.Close()
-	log.Println("Server started at address:", server.Addr().String())
+	log.Println("Server started at address:", server.Listener.Addr().String())
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -41,7 +41,6 @@ func handler(res *response.Response, req *request.Request) {
 		res.Headers.Set("Content-Type", "text/plain")
 		res.Body("Whoopsie, my bad\n")
 	default:
-		res.SetStatusCode(response.StatusCode_200)
 		res.SetDefaultHeaders()
 		res.Headers.Set("Content-Type", "text/plain")
 		res.Body("All good frfr\n")

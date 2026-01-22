@@ -5,14 +5,13 @@ import (
 	"log"
 	"net"
 	"sync/atomic"
-	"unsafe"
 
 	"boot.theprimeagen.tv/internal/request"
 	"boot.theprimeagen.tv/internal/response"
 )
 
 type Server struct {
-	Listener net.Listener //@ pointer?
+	Listener net.Listener
 	closed   atomic.Bool
 }
 
@@ -71,21 +70,14 @@ func (s *Server) Close() error {
 	return nil
 }
 
-func (s *Server) Addr() net.Addr {
-	return s.Listener.Addr()
-}
-
 func Serve(port int, handler Handler) (*Server, error) {
 	addr := fmt.Sprintf("127.0.0.1:%v", port)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("listener's type is %T\n", l)
-	fmt.Printf("listener's size is %v\n", unsafe.Sizeof(l))
 
-	s := &Server{Listener: l} //@ pointer?
-	// s.closed.Store(false)      // seems to be "false" by default
+	s := &Server{Listener: l}
 
 	go s.listen(handler)
 
