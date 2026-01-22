@@ -4,12 +4,10 @@ import (
 	"boot.theprimeagen.tv/internal/request"
 	"boot.theprimeagen.tv/internal/response"
 	"boot.theprimeagen.tv/internal/server"
-	"io"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	// "time"
 )
 
 // const port = 1
@@ -30,24 +28,22 @@ func main() {
 	log.Println("Server gracefully stopped")
 }
 
-func handler(w io.Writer, req *request.Request) *server.HandlerError {
-	var err *server.HandlerError = nil
-
+func handler(res *response.Response, req *request.Request) {
 	switch req.RequestLine.RequestTarget {
 	case "/yourproblem":
-		err = &server.HandlerError{
-			Code:    response.StatusCode_400,
-			Message: "Your problem is not my problem\n",
-		}
+		res.SetStatusCode(response.StatusCode_400)
+		res.SetDefaultHeaders()
+		res.Headers.Set("Content-Type", "text/plain")
+		res.Body("Your problem is not my problem\n")
 	case "/myproblem":
-		err = &server.HandlerError{
-			Code:    response.StatusCode_500,
-			Message: "Whoopsie, my bad\n",
-		}
+		res.SetStatusCode(response.StatusCode_500)
+		res.SetDefaultHeaders()
+		res.Headers.Set("Content-Type", "text/plain")
+		res.Body("Whoopsie, my bad\n")
 	default:
-		w.Write([]byte("All good frfr\n"))
-		err = nil
+		res.SetStatusCode(response.StatusCode_200)
+		res.SetDefaultHeaders()
+		res.Headers.Set("Content-Type", "text/plain")
+		res.Body("All good frfr\n")
 	}
-
-	return err
 }

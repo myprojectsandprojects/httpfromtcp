@@ -17,6 +17,15 @@ func (h Headers) Get(name string) string {
 	return h[strings.ToLower(name)]
 }
 
+func (h *Headers) Set(name, value string) {
+	//@ What should happen if the 'name' already exists?
+	if (*h)[strings.ToLower(name)] != "" {
+		panic("Header already exists")
+	}
+
+	(*h)[strings.ToLower(name)] = value
+}
+
 // parses one key-value pair (header) at a time
 func (h *Headers) Parse(data []byte) (int, bool, error) {
 	i := bytes.Index(data, []byte("\r\n"))

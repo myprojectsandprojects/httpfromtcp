@@ -1,33 +1,33 @@
 package server
 
 import (
-	"boot.theprimeagen.tv/internal/request"
-	"boot.theprimeagen.tv/internal/response"
-	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"sync/atomic"
+	"unsafe"
+
+	"boot.theprimeagen.tv/internal/request"
+	"boot.theprimeagen.tv/internal/response"
 )
 
 type Server struct {
-	listener *net.Listener //@ pointer?
+	Listener net.Listener //@ pointer?
 	closed   atomic.Bool
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(res *response.Response, req *request.Request)
 
 type HandlerError struct {
 	Code    response.StatusCode
 	Message string
 }
 
-func (s *Server) listen(connHandler Handler) {
+func (s *Server) listen(handler Handler) {
 	// It mostly doesn't run when the server is closed because this function is waiting on Accept() most of the time
 	//@ Is this fine?
 	defer func() {
-		(*s.listener).Close()
+		s.Listener.Close()
 		log.Print("closed the listener")
 	}()
 
@@ -40,21 +40,17 @@ func (s *Server) listen(connHandler Handler) {
 			break
 		}
 
-		conn, err := (*s.listener).Accept()
+		conn, err := s.Listener.Accept()
 		if err != nil {
 			log.Fatal(err) //@ How to report this error?
 		}
-		fmt.Print("Accepted a connection.\n")
 
-		go s.handle(conn, connHandler)
+		go s.handle(conn, handler)
 	}
 }
 
-func (s *Server) handle(conn net.Conn, connHandler Handler) {
-	defer func() {
-		conn.Close()
-		fmt.Print("Closed the connection.\n")
-	}()
+func (s *Server) handle(conn net.Conn, handler Handler) {
+	defer conn.Close()
 
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
@@ -62,39 +58,11 @@ func (s *Server) handle(conn net.Conn, connHandler Handler) {
 		return
 	}
 	fmt.Printf("%v %v\n", req.RequestLine.Method, req.RequestLine.RequestTarget)
-	// for k, v := range req.Headers {
-	// 	fmt.Printf("%v: %v\n", k, v)
-	// }
 
-	var body bytes.Buffer
-	handlerErr := connHandler(&body, req)
-	if handlerErr != nil {
-		err = response.WriteStatusLine(conn, handlerErr.Code)
-		body.Write([]byte(handlerErr.Message))
-	} else {
-		err = response.WriteStatusLine(conn, response.StatusCode_200)
-	}
-	if err != nil {
-		panic("boom")
-	}
+	res := response.New()
+	handler(res, req)
 
-	contentLen := body.Len()
-
-	headers := response.GetDefaultHeaders(contentLen)
-	err = response.WriteHeaders(conn, headers)
-	if err != nil {
-		log.Fatal(err) //@ How to report this error?
-	}
-
-	_, err = conn.Write([]byte("\r\n"))
-	if err != nil {
-		log.Fatal(err) //@ How to report this error?
-	}
-
-	_, err = body.WriteTo(conn)
-	if err != nil {
-		log.Fatal(err) //@ How to report this error?
-	}
+	res.Bytes.WriteTo(conn)
 }
 
 func (s *Server) Close() error {
@@ -104,20 +72,22 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) Addr() net.Addr {
-	return (*s.listener).Addr()
+	return s.Listener.Addr()
 }
 
-func Serve(port int, connHandler Handler) (*Server, error) {
+func Serve(port int, handler Handler) (*Server, error) {
 	addr := fmt.Sprintf("127.0.0.1:%v", port)
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("listener's type is %T\n", l)
+	fmt.Printf("listener's size is %v\n", unsafe.Sizeof(l))
 
-	s := &Server{listener: &l} //@ pointer?
+	s := &Server{Listener: l} //@ pointer?
 	// s.closed.Store(false)      // seems to be "false" by default
 
-	go s.listen(connHandler)
+	go s.listen(handler)
 
 	return s, nil
 }
