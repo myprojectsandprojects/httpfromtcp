@@ -15,12 +15,7 @@ type Server struct {
 	closed   atomic.Bool
 }
 
-type Handler func(res *response.Response, req *request.Request)
-
-type HandlerError struct {
-	Code    response.StatusCode
-	Message string
-}
+type Handler func(w *response.Writer, req *request.Request)
 
 func (s *Server) listen(handler Handler) {
 	// It mostly doesn't run when the server is closed because this function is waiting on Accept() most of the time
@@ -58,10 +53,8 @@ func (s *Server) handle(conn net.Conn, handler Handler) {
 	}
 	fmt.Printf("%v %v\n", req.RequestLine.Method, req.RequestLine.RequestTarget)
 
-	res := response.New()
-	handler(res, req)
-
-	res.Bytes.WriteTo(conn)
+	w := response.NewWriter(conn)
+	handler(&w, req)
 }
 
 func (s *Server) Close() error {

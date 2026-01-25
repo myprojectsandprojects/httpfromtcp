@@ -1,10 +1,8 @@
 package response
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"strconv"
 
 	"boot.theprimeagen.tv/internal/headers"
 )
@@ -35,7 +33,7 @@ func (code StatusCode) String() string {
 func WriteHeaders(w io.Writer, headers headers.Headers) error {
 	for k, v := range headers {
 		header := fmt.Sprintf("%v: %v\r\n", k, v)
-		_, err := w.Write([]byte(header)) //@ Does it write everything?
+		_, err := w.Write([]byte(header)) //@ We can't assume that it writes all (source: Perplexity)
 		if err != nil {
 			return err
 		}
@@ -49,49 +47,40 @@ func WriteHeaders(w io.Writer, headers headers.Headers) error {
 	return nil
 }
 
-type Response struct {
-	Bytes      bytes.Buffer
-	StatusCode StatusCode
-	Headers    headers.Headers
+type Writer struct {
+	writer io.Writer
 }
 
-func New() *Response {
-	return &Response{
-		Headers:    headers.Create(),
-		StatusCode: StatusCode_200,
+func NewWriter(w io.Writer) Writer {
+	return Writer{
+		writer: w,
 	}
 }
 
-func (resp *Response) SetStatusCode(code StatusCode) {
-	resp.StatusCode = code
-}
-
-func (resp *Response) SetDefaultHeaders() {
-	resp.Headers.Set("connection", "close")
-}
-
-func (resp *Response) Body(body string) {
-	// statusLine := fmt.Sprintf("HTTP/1.1 %v %v\r\n", int(resp.StatusCode), resp.StatusCode)
-	// _, err := resp.Bytes.Write([]byte(statusLine)) //@ Does it write everything?
-	// if err != nil {
-	// 	panic("boom")
-	// }
-	_, err := fmt.Fprintf(&resp.Bytes, "HTTP/1.1 %v %v\r\n", int(resp.StatusCode), resp.StatusCode)
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
+	_, err := fmt.Fprintf(w.writer, "HTTP/1.1 %v %v\r\n", int(statusCode), statusCode)
 	if err != nil {
-		panic("boom")
+		return err
+	}
+	return nil
+}
+
+func (w *Writer) WriteHeaders(headers headers.Headers) error {
+	for k, v := range headers {
+		_, err := fmt.Fprintf(w.writer, "%v: %v\r\n", k, v)
+		if err != nil {
+			return err
+		}
 	}
 
-	// contentLen := fmt.Sprintf("%v", len(body))
-	contentLen := strconv.Itoa(len(body))
-	resp.Headers.Set("Content-Length", contentLen)
+	return nil
+}
 
-	err = WriteHeaders(&resp.Bytes, resp.Headers)
+func (w *Writer) WriteBody(p []byte) (int, error) {
+	n, err := fmt.Fprintf(w.writer, "Content-Length: %v\r\n\r\n%s", len(p), p)
 	if err != nil {
-		panic("boom")
+		return 0, err
 	}
 
-	_, err = resp.Bytes.Write([]byte(body))
-	if err != nil {
-		panic("boom")
-	}
+	return n, nil
 }

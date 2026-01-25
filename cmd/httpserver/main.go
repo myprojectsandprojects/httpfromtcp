@@ -1,6 +1,7 @@
 package main
 
 import (
+	"boot.theprimeagen.tv/internal/headers"
 	"boot.theprimeagen.tv/internal/request"
 	"boot.theprimeagen.tv/internal/response"
 	"boot.theprimeagen.tv/internal/server"
@@ -28,12 +29,13 @@ func main() {
 	log.Println("Server gracefully stopped")
 }
 
-func handler(res *response.Response, req *request.Request) {
+func handler(w *response.Writer, req *request.Request) {
+	hs := headers.Create()
+	hs.Set("Connection", "close")
+	hs.Set("Content-Type", "text/html")
+
 	switch req.RequestLine.RequestTarget {
 	case "/yourproblem":
-		res.SetStatusCode(response.StatusCode_400)
-		res.SetDefaultHeaders()
-		res.Headers.Set("Content-Type", "text/html")
 		body :=
 			`<html>
   <head>
@@ -43,12 +45,13 @@ func handler(res *response.Response, req *request.Request) {
     <h1>Bad Request</h1>
     <p>Your request honestly kinda sucked.</p>
   </body>
+
 </html>`
-		res.Body(body)
+
+		w.WriteStatusLine(response.StatusCode_400)
+		w.WriteHeaders(hs)
+		w.WriteBody([]byte(body))
 	case "/myproblem":
-		res.SetStatusCode(response.StatusCode_500)
-		res.SetDefaultHeaders()
-		res.Headers.Set("Content-Type", "text/html")
 		body :=
 			`<html>
   <head>
@@ -59,10 +62,11 @@ func handler(res *response.Response, req *request.Request) {
     <p>Okay, you know what? This one is on me.</p>
   </body>
 </html>`
-		res.Body(body)
+
+		w.WriteStatusLine(response.StatusCode_500)
+		w.WriteHeaders(hs)
+		w.WriteBody([]byte(body))
 	default:
-		res.SetDefaultHeaders()
-		res.Headers.Set("Content-Type", "text/html")
 		body :=
 			`<html>
   <head>
@@ -73,6 +77,9 @@ func handler(res *response.Response, req *request.Request) {
     <p>Your request was an absolute banger.</p>
   </body>
 </html>`
-		res.Body(body)
+
+		w.WriteStatusLine(response.StatusCode_200)
+		w.WriteHeaders(hs)
+		w.WriteBody([]byte(body))
 	}
 }

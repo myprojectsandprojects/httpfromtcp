@@ -20,7 +20,7 @@ func (h Headers) Get(name string) string {
 func (h *Headers) Set(name, value string) {
 	//@ What should happen if the 'name' already exists?
 	if (*h)[strings.ToLower(name)] != "" {
-		panic("Header already exists")
+		panic("Key already exists!")
 	}
 
 	(*h)[strings.ToLower(name)] = value
