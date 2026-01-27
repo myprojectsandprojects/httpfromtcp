@@ -3,6 +3,7 @@ package response
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"boot.theprimeagen.tv/internal/headers"
 )
@@ -30,25 +31,9 @@ func (code StatusCode) String() string {
 	return s
 }
 
-func WriteHeaders(w io.Writer, headers headers.Headers) error {
-	for k, v := range headers {
-		header := fmt.Sprintf("%v: %v\r\n", k, v)
-		_, err := w.Write([]byte(header)) //@ We can't assume that it writes all (source: Perplexity)
-		if err != nil {
-			return err
-		}
-	}
-
-	_, err := w.Write([]byte("\r\n"))
-	if err != nil {
-		panic("boom")
-	}
-
-	return nil
-}
-
 type Writer struct {
-	writer io.Writer
+	writer            io.Writer
+	wroteEndOfHeaders bool
 }
 
 func NewWriter(w io.Writer) Writer {
@@ -62,6 +47,7 @@ func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -78,6 +64,36 @@ func (w *Writer) WriteHeaders(headers headers.Headers) error {
 
 func (w *Writer) WriteBody(p []byte) (int, error) {
 	n, err := fmt.Fprintf(w.writer, "Content-Length: %v\r\n\r\n%s", len(p), p)
+	if err != nil {
+		return 0, err
+	}
+
+	return n, nil
+}
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+	totalWritten := 0
+	if !w.wroteEndOfHeaders {
+		n, err := fmt.Fprintf(w.writer, "\r\n")
+		if err != nil {
+			return 0, err
+		}
+		w.wroteEndOfHeaders = true
+		totalWritten += n
+	}
+
+	hexStr := strconv.FormatInt(int64(len(p)), 16)
+	n, err := fmt.Fprintf(w.writer, "%s\r\n%s\r\n", hexStr, p)
+	if err != nil {
+		return 0, err
+	}
+	totalWritten += n
+
+	return totalWritten, nil
+}
+
+func (w *Writer) WriteChunkedBodyDone() (int, error) {
+	n, err := fmt.Fprintf(w.writer, "0\r\n\r\n")
 	if err != nil {
 		return 0, err
 	}
