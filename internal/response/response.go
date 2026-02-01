@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"strings"
 
 	"boot.theprimeagen.tv/internal/headers"
 )
@@ -99,4 +100,31 @@ func (w *Writer) WriteChunkedBodyDone() (int, error) {
 	}
 
 	return n, nil
+}
+
+// map[string]string // where key is the trailer name and the value is the trailer value. Feels cleaner
+func (w *Writer) WriteTrailers(h headers.Headers, values ...string) error {
+	names := strings.Split(h.Get("Trailer"), ", ")
+	if len(names) != len(values) {
+		panic("fail")
+	}
+
+	// Perplexity argues that this should not be sent (which makes sense to me):
+	// _, err := fmt.Fprintf(w.writer, "0\r\n")
+	// if err != nil {
+	// 	panic("fail")
+	// }
+
+	for i, name := range names {
+		_, err := fmt.Fprintf(w.writer, "%v: %v\r\n", name, values[i])
+		if err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintf(w.writer, "\r\n")
+	if err != nil {
+		panic("fail")
+	}
+
+	return nil
 }

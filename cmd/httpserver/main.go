@@ -1,15 +1,17 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
-	"time"
+	// "time"
 
 	"boot.theprimeagen.tv/internal/headers"
 	"boot.theprimeagen.tv/internal/request"
@@ -42,6 +44,7 @@ func handler(w *response.Writer, req *request.Request) {
 	prefix := "/httpbin/"
 	if postfix, found := strings.CutPrefix(req.RequestLine.RequestTarget, prefix); found {
 		h.Set("Transfer-Encoding", "chunked")
+		h.Set("Trailer", "X-Content-Length, X-Content-SHA256")
 
 		err := w.WriteStatusLine(response.StatusCode_200)
 		if err != nil {
@@ -66,7 +69,8 @@ func handler(w *response.Writer, req *request.Request) {
 			panic("failed")
 		}
 
-		buf := make([]byte, 1024)
+		var content []byte
+		buf := make([]byte, 64)
 		for {
 			n, err := resp.Body.Read(buf)
 			if err != nil {
@@ -76,13 +80,22 @@ func handler(w *response.Writer, req *request.Request) {
 				panic("failed to read for some unknown reason")
 			}
 
-			time.Sleep(time.Second * 3)
+			// time.Sleep(time.Second * 3)
 			_, err = w.WriteChunkedBody(buf[:n])
 			if err != nil {
-				panic("failed")
+				panic("failed") //@ Obviously the server shouldn't panic (crash) when the client disconnects midway
 			}
+
+			content = append(content, buf[:n]...)
 		}
 		_, err = w.WriteChunkedBodyDone()
+		if err != nil {
+			panic("failed")
+		}
+
+		contentLen := strconv.Itoa(len(content))
+		checksum := fmt.Sprintf("%x", sha256.Sum256(content))
+		err = w.WriteTrailers(h, contentLen, checksum)
 		if err != nil {
 			panic("failed")
 		}
@@ -154,9 +167,6 @@ func handler(w *response.Writer, req *request.Request) {
   </body>
 </html>`
 
-		if req.RequestLine.RequestTarget == "/favicon.ico" {
-			fmt.Println("started serving favicon.ico")
-		}
 		h.Set("Content-Type", "text/html")
 		err := w.WriteStatusLine(response.StatusCode_200)
 		if err != nil {
@@ -169,9 +179,6 @@ func handler(w *response.Writer, req *request.Request) {
 		_, err = w.WriteBody([]byte(body))
 		if err != nil {
 			panic("failure")
-		}
-		if req.RequestLine.RequestTarget == "/favicon.ico" {
-			fmt.Println("finished serving favicon.ico")
 		}
 	}
 }

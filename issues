@@ -1,0 +1,2 @@
+This: "echo -e "GET /httpbin/stream/1 HTTP/1.1\r\nHost: localhost:42069\r\nConnection: close\r\n\r" | nc localhost 42069" should not receive 200-response from the server (missing a '\n' at the end of headers)
+Does echo command add a newline?
