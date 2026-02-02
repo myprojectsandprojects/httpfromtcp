@@ -155,6 +155,29 @@ func handler(w *response.Writer, req *request.Request) {
 		if err != nil {
 			panic("failure")
 		}
+	case "/video":
+		f := "/home/eero/go-test/httpfromtcp/assets/vim.mp4"
+		body, err := os.ReadFile(f)
+		if err != nil {
+			panic("failed to read the file")
+		}
+		fmt.Printf("file size: %v\n", len(body))
+
+		h.Set("Content-Type", "video/mp4")
+		// h.Set("Content-Disposition", "attachment; filename=\"vim.mp4\"") // Tells browsers that the response should be treated as a file download, not rendered inline (by built-in players or viewers)
+
+		err = w.WriteStatusLine(response.StatusCode_200)
+		if err != nil {
+			panic("failure")
+		}
+		err = w.WriteHeaders(h)
+		if err != nil {
+			panic("failure")
+		}
+		_, err = w.WriteBody(body)
+		if err != nil {
+			log.Print(err)
+		}
 	default:
 		body :=
 			`<html>
